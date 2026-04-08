@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>業務工時成本分析 2026 Q1</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy:   #1B2A4A;
+    --blue:   #2E6DA4;
+    --blue-l: #E6F1FB;
+    --green:  #217346;
+    --green-l:#E2EFDA;
+    --teal:   #1D9E75;
+    --purple: #5B2C6F;
+    --purp-l: #EAD5F5;
+    --orange: #C55A11;
+    --ora-l:  #FCE4D6;
+    --red:    #A32D2D;
+    --red-l:  #FCEBEB;
+    --amber:  #854F0B;
+    --amb-l:  #FAEEDA;
+    --gray:   #5F5E5A;
+    --gray-l: #F4F3F0;
+    --border: rgba(0,0,0,0.09);
+    --bg:     #F7F6F3;
+    --white:  #FFFFFF;
+    --text:   #1B2A4A;
+    --text2:  #5F5E5A;
+    --radius: 10px;
+    --chart-text: #5F5E5A;
+    --chart-grid: rgba(0,0,0,0.07);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:     #111827;
+      --white:  #1F2937;
+      --text:   #F9FAFB;
+      --text2:  #9CA3AF;
+      --border: rgba(255,255,255,0.1);
+      --gray-l: #1F2937;
+      --blue-l: #1e3a5f;
+      --green-l:#163d25;
+      --purp-l: #2d1540;
+      --ora-l:  #3d1f08;
+      --red-l:  #3d1010;
+      --amb-l:  #3d2408;
+      --chart-text: #9CA3AF;
+      --chart-grid: rgba(255,255,255,0.08);
+    }
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans TC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--navy);
+    padding: 28px 40px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  header::after {
+    content: '';
+    position: absolute;
+    right: -60px; top: -60px;
+    width: 280px; height: 280px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+    pointer-events: none;
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    right: 80px; bottom: -80px;
+    width: 180px; height: 180px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.03);
+    pointer-events: none;
+  }
+  .header-label {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: rgba(255,255,255,0.45);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    font-family: 'DM Mono', monospace;
+  }
+  header h1 {
+    font-size: clamp(20px, 3vw, 28px);
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 6px;
+  }
+  .header-meta {
+    font-size: 12px;
+    color: rgba(255,255,255,0.45);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ── Layout ── */
+  .container { max-width: 1100px; margin: 0 auto; padding: 28px 24px; }
+
+  /* ── Tabs ── */
+  .tab-bar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .tab-btn {
+    padding: 8px 18px;
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    background: var(--white);
+    cursor: pointer;
+    font-size: 13px;
+    font-family: 'Noto Sans TC', sans-serif;
+    color: var(--text2);
+    transition: all .18s ease;
+    font-weight: 400;
+  }
+  .tab-btn:hover { border-color: var(--blue); color: var(--blue); }
+  .tab-btn.active {
+    background: var(--navy);
+    color: #fff;
+    border-color: var(--navy);
+    font-weight: 500;
+  }
+
+  .pane { display: none; animation: fadeIn .2s ease; }
+  .pane.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── KPI Cards ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .kpi {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-accent {
+    position: absolute;
+    top: 0; left: 0;
+    width: 4px; height: 100%;
+    border-radius: 10px 0 0 10px;
+  }
+  .kpi-label { font-size: 11px; color: var(--text2); margin-bottom: 6px; font-weight: 500; letter-spacing: 0.02em; }
+  .kpi-value { font-size: 22px; font-weight: 700; color: var(--text); line-height: 1.2; }
+  .kpi-sub { font-size: 11px; color: var(--text2); margin-top: 4px; font-family: 'DM Mono', monospace; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .chart-wrap { position: relative; width: 100%; }
+
+  /* ── Legend ── */
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; }
+  .leg { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text2); }
+  .leg-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ── Table ── */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .data-table th {
+    background: var(--gray-l);
+    color: var(--text2);
+    font-weight: 600;
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .data-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: middle;
+  }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: var(--gray-l); }
+
+  /* ── Badges ── */
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 99px;
+    letter-spacing: 0.03em;
+  }
+  .b-green  { background: var(--green-l); color: var(--green); }
+  .b-red    { background: var(--red-l);   color: var(--red); }
+  .b-amber  { background: var(--amb-l);   color: var(--amber); }
+  .b-blue   { background: var(--blue-l);  color: var(--blue); }
+  .b-purple { background: var(--purp-l);  color: var(--purple); }
+
+  /* ── Insight list ── */
+  .insights { list-style: none; }
+  .insights li {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+  .insights li:last-child { border-bottom: none; }
+  .insights .badge { margin-top: 3px; flex-shrink: 0; }
+
+  /* ── Comparison stats ── */
+  .compare-stat { display: grid; grid-template-columns: 2fr 1fr 1fr; font-size: 12px; }
+  .compare-stat .row { display: contents; }
+  .compare-stat .row > * { padding: 7px 10px; border-bottom: 1px solid var(--border); }
+  .compare-stat .row:last-child > * { border-bottom: none; }
+  .compare-stat .row > *:first-child { color: var(--text2); }
+  .compare-stat .head > * { font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text2); background: var(--gray-l); }
+  .highlight { font-weight: 700; color: var(--navy); }
+
+  /* ── Divider ── */
+  .section-divider {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text2);
+    margin: 24px 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ── Footer ── */
+  footer {
+    text-align: center;
+    padding: 24px;
+    font-size: 11px;
+    color: var(--text2);
+    font-family: 'DM Mono', monospace;
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+  }
+
+  @media (max-width: 700px) {
+    header { padding: 20px 18px; }
+    .container { padding: 18px 14px; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .two-col { grid-template-columns: 1fr; }
+    .tab-btn { font-size: 12px; padding: 6px 13px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-label">Story Studio · Internal Report</div>
+  <h1>業務工時成本分析 2026 Q1</h1>
+  <div class="header-meta">資料期間：2026/01/02 – 2026/03/31　｜　人員：Liangheng、Janyang　｜　成本：NT$600/hr</div>
+</header>
+
+<div class="container">
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="sw('ov',this)">總覽</button>
+    <button class="tab-btn" onclick="sw('lh',this)">Liangheng</button>
+    <button class="tab-btn" onclick="sw('jy',this)">Janyang</button>
+    <button class="tab-btn" onclick="sw('cp',this)">兩人比較</button>
+    <button class="tab-btn" onclick="sw('sg',this)">分析建議</button>
+  </div>
+
+  <!-- ══════ 總覽 ══════ -->
+  <div id="pov" class="pane active">
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-accent" style="background:var(--navy)"></div>
+        <div class="kpi-label">兩人總工時</div><div class="kpi-value">961.7h</div><div class="kpi-sub">2026 Q1 合計</div></div>
+      <div class="kpi"><div class="kpi-accent" style="background:var(--teal)"></div>
+        <div class="kpi-label">成案件數</div><div class="kpi-value">11 件</div><div class="kpi-sub">共觸及 45 案</div></div>
+      <div class="kpi"><div class="kpi-accent" style="background:var(--blue)"></div>
+        <div class="kpi-label">成案合約總額</div><div class="kpi-value">NT$4.8M</div><div class="kpi-sub">已知合約金額</div></div>
+      <div class="kpi"><div class="kpi-accent" style="background:var(--red)"></div>
+        <div class="kpi-label">未成案沉沒成本</div><div class="kpi-value" style="color:var(--red)">NT$190K</div><div class="kpi-sub">@600元/hr</div></div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">工時結構（兩人合計 961.7h）</div>
+        <div class="legend">
+          <span class="leg"><span class="leg-dot" style="background:#2E6DA4"></span>業務內部事務</span>
+          <span class="leg"><span class="leg-dot" style="background:#1D9E75"></span>成案提案+執行</span>
+          <span class="leg"><span class="leg-dot" style="background:#EF9F27"></span>R&D/補助案</span>
+          <span class="leg"><span class="leg-dot" style="background:#E24B4A"></span>未成案提案</span>
+        </div>
+        <div class="chart-wrap" style="height:220px"><canvas id="c1"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">月度工時趨勢</div>
+        <div class="legend">
+          <span class="leg"><span class="leg-dot" style="background:#7F77DD"></span>Liangheng</span>
+          <span class="leg"><span class="leg-dot" style="background:#1D9E75"></span>Janyang</span>
+        </div>
+        <div class="chart-wrap" style="height:220px"><canvas id="c2"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">主要業務活動工時分佈（小時）</div>
+      <div class="chart-wrap" style="height:220px"><canvas id="c3"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ══════ Liangheng ══════ -->
+  <div id="plh" class="pane">
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-accent" style="background:#7F77DD"></div>
+        <div class="kpi-label">總工時</div><div class="kpi-value">416.0h</div><div class="kpi-sub">263 筆記錄</div></div>
+      <div class="kpi"><div class="kpi-accent" style="background:var(--teal)"></div>
+        <div class="kpi-label">成案件數</div><div class="kpi-value">9 件</div><div class="kpi-sub">合約額 NT$4.7M</div></div>
+      <div class="kpi"><div class="kpi-accent" style="background:var(--blue)"></div>
+        <div class="kpi-label">每小時合約產出</div><div class="kpi-value">$11,309</div><div class="kpi-sub">極高效益</div></div>
+      <div class="kpi"><div class="kpi-accent" style="background:var(--orange)"></div>
+        <div class="kpi-label">內部事務佔比</div><div class="kpi-value">53%</div><div class="kpi-sub">221.6h</div></div>
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">工時分配</div>
+        <div class="chart-wrap" style="height:260px"><canvas id="c4"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">月度：內部 vs 專案工時</div>
+        <div class="legend">
+          <span class="leg"><span class="leg-dot" style="background:#B5D4F4"></span>內部事務</span>
+          <span class="leg"><span class="leg-dot" style="background:#7F77DD"></span>專案工時</span>
+        </div>
+        <div class="chart-wrap" style="height:260px"><canvas id="c5"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Liangheng 專案清單</div>
+      <table class="data-table">
+        <thead><tr><th>專案</th><th>狀態</th><th>提案 h</th><th>執行 h</th><th>合約金額</th></tr></thead>
+        <tbody>
+          <tr><td>電業文物典藏（台灣電力）</td><td><span class="badge b-green">成案</span></td><td>21.2</td><td>—</td><td>NT$1,985,025</td></tr>
+          <tr><td>華航長榮罷工展（空服員工會）</td><td><span class="badge b-green">成案</span></td><td>1.9</td><td>14.6</td><td>NT$1,040,000</td></tr>
+          <tr><td>名人故居2（臺北市文化局）</td><td><span class="badge b-green">成案</span></td><td>0</td><td>2.2</td><td>NT$600,000</td></tr>
+          <tr><td>血友病廣編（采鋐行銷）</td><td><span class="badge b-green">成案</span></td><td>5.3</td><td>—</td><td>NT$500,000</td></tr>
+          <tr><td>輔大歷史課程2</td><td><span class="badge b-green">成案</span></td><td>2.4</td><td>11.2</td><td>NT$200,000</td></tr>
+          <tr><td>國際書展行銷</td><td><span class="badge b-green">成案</span></td><td>1.6</td><td>—</td><td>NT$148,500</td></tr>
+          <tr><td>物的呢喃加印</td><td><span class="badge b-green">成案</span></td><td>1.1</td><td>—</td><td>NT$143,000</td></tr>
+          <tr><td>天馬茶房Podcast</td><td><span class="badge b-green">成案</span></td><td>5.5</td><td>—</td><td>NT$98,000</td></tr>
+          <tr><td>臺南人權月</td><td><span class="badge b-green">成案</span></td><td>2.2</td><td>1.0</td><td>NT$90,000</td></tr>
+          <tr><td>國家檔案館2026（最高未成案）</td><td><span class="badge b-red">未成案</span></td><td>19.4</td><td>0</td><td>—</td></tr>
+          <tr><td>新北府中15影像教育</td><td><span class="badge b-red">未成案</span></td><td>16.9</td><td>0</td><td>—</td></tr>
+          <tr><td>李登輝基金會社群案</td><td><span class="badge b-red">未成案</span></td><td>16.6</td><td>0</td><td>—</td></tr>
+          <tr><td>其他未成案（12案）</td><td><span class="badge b-red">未成案</span></td><td>53.0</td><td>14.7</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════ Janyang ══════ -->
+  <div id="pjy" class="pane">
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-accent" style="background:#1D9E75"></div>
+        <div class="kpi-label">總工時</div><div class="kpi-value">545.7h</div><div class="kpi-sub">408 筆記錄</div></div>
+      <div class="kpi"><div class="kpi-accent" style="background:var(--teal)"></div>
+        <div class="kpi-label">成案件數</div><div class="kpi-value">2 件</div><div class="kpi-sub">合約額 NT$100K</div></div>
+      <div class="kpi"><div class="kpi-accent" style="background:var(--red)"></div>
+        <div class="kpi-label">每小時合約產出</div><div class="kpi-value" style="color:var(--red)">$183</div><div class="kpi-sub">需大幅改善</div></div>
+      <div class="kpi"><div class="kpi-accent" style="background:var(--orange)"></div>
+        <div class="kpi-label">內部+R&D佔比</div><div class="kpi-value">77%</div><div class="kpi-sub">約 420h</div></div>
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">工時分配</div>
+        <div class="chart-wrap" style="height:260px"><canvas id="c6"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">月度：內部 vs 專案工時</div>
+        <div class="legend">
+          <span class="leg"><span class="leg-dot" style="background:#B5D4F4"></span>內部事務</span>
+          <span class="leg"><span class="leg-dot" style="background:#1D9E75"></span>專案工時</span>
+        </div>
+        <div class="chart-wrap" style="height:260px"><canvas id="c7"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Janyang 專案清單</div>
+      <table class="data-table">
+        <thead><tr><th>專案</th><th>狀態</th><th>提案 h</th><th>執行 h</th><th>合約金額</th></tr></thead>
+        <tbody>
+          <tr><td>熱帶植物podcast（學籽文創）</td><td><span class="badge b-green">成案</span></td><td>5.5</td><td>1.3</td><td>NT$48,000</td></tr>
+          <tr><td>拍臺北行銷（電影委員會）</td><td><span class="badge b-green">成案</span></td><td>0.9</td><td>2.0</td><td>NT$52,000</td></tr>
+          <tr><td>R&D 故事旅行社</td><td><span class="badge b-amber">進行中</span></td><td>0</td><td>98.7</td><td>—</td></tr>
+          <tr><td>臺北小旅行出版（延續案）</td><td><span class="badge b-amber">進行中</span></td><td>0</td><td>14.2</td><td>—</td></tr>
+          <tr><td>台灣觀光日文（延續案）</td><td><span class="badge b-amber">進行中</span></td><td>0</td><td>9.8</td><td>—</td></tr>
+          <tr><td>國漫館《漫想誌》季刊 ⚠</td><td><span class="badge b-red">未成案</span></td><td>104.8</td><td>0</td><td>—</td></tr>
+          <tr><td>青年百億海外圓夢基金</td><td><span class="badge b-red">未成案</span></td><td>34.4</td><td>0</td><td>—</td></tr>
+          <tr><td>臺文館愛爾蘭特展</td><td><span class="badge b-red">未成案</span></td><td>6.5</td><td>0</td><td>—</td></tr>
+          <tr><td>中正紀念堂常設展</td><td><span class="badge b-red">未成案</span></td><td>5.8</td><td>0</td><td>—</td></tr>
+          <tr><td>其他（8案）</td><td><span class="badge b-red">未成案</span></td><td>~10</td><td>~22</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════ 比較 ══════ -->
+  <div id="pcp" class="pane">
+    <div class="card">
+      <div class="card-title">核心能力雷達圖（相對評分）</div>
+      <div class="legend">
+        <span class="leg"><span class="leg-dot" style="background:#7F77DD"></span>Liangheng</span>
+        <span class="leg"><span class="leg-dot" style="background:#1D9E75"></span>Janyang</span>
+      </div>
+      <div class="chart-wrap" style="height:300px"><canvas id="c8"></canvas></div>
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">成案效益對比</div>
+        <div class="compare-stat">
+          <div class="row head"><span>指標</span><span>Liangheng</span><span>Janyang</span></div>
+          <div class="row"><span>Q1 總工時</span><span>416.0h</span><span>545.7h</span></div>
+          <div class="row"><span>成案件數</span><span class="highlight">9 件</span><span>2 件</span></div>
+          <div class="row"><span>合約總額</span><span class="highlight">NT$4,704,525</span><span>NT$100,000</span></div>
+          <div class="row"><span>每小時合約產出</span><span class="highlight">NT$11,309</span><span>NT$183</span></div>
+          <div class="row"><span>未成案沉沒工時</span><span>124.5h</span><span style="color:var(--red);font-weight:700">193.8h</span></div>
+          <div class="row"><span>未成案沉沒成本</span><span>NT$74,700</span><span style="color:var(--red);font-weight:700">NT$116,280</span></div>
+          <div class="row"><span>成案平均提案工時</span><span>4.5h</span><span>3.2h</span></div>
+          <div class="row"><span>內部事務工時</span><span>221.6h (53%)</span><span>228.5h (42%)</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">工時結構比較</div>
+        <div class="legend">
+          <span class="leg"><span class="leg-dot" style="background:#7F77DD"></span>Liangheng</span>
+          <span class="leg"><span class="leg-dot" style="background:#1D9E75"></span>Janyang</span>
+        </div>
+        <div class="chart-wrap" style="height:260px"><canvas id="c9"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">最高工時沉沒案件 Top 5</div>
+      <table class="data-table">
+        <thead><tr><th>人員</th><th>案件</th><th>沉沒工時</th><th>沉沒成本</th></tr></thead>
+        <tbody>
+          <tr><td>Janyang</td><td>國漫館《漫想誌》季刊</td><td style="color:var(--red);font-weight:700">104.8h</td><td style="color:var(--red);font-weight:700">NT$62,880</td></tr>
+          <tr><td>Janyang</td><td>青年百億海外圓夢基金</td><td>34.4h</td><td>NT$20,640</td></tr>
+          <tr><td>Liangheng</td><td>國家檔案館2026</td><td>19.4h</td><td>NT$11,640</td></tr>
+          <tr><td>Liangheng</td><td>新北府中15影像教育</td><td>16.9h</td><td>NT$10,140</td></tr>
+          <tr><td>Liangheng</td><td>李登輝基金會社群案</td><td>16.6h</td><td>NT$9,960</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════ 建議 ══════ -->
+  <div id="psg" class="pane">
+    <div class="card">
+      <div class="card-title">整體觀察</div>
+      <ul class="insights">
+        <li><span class="badge b-blue">工時</span>Janyang（545.7h）比 Liangheng（416h）多 31%，但成案合約額差距 47 倍（NT$100K vs NT$4.7M），顯示兩人的業務策略與客戶組合存在根本性差異，需要明確分工定位。</li>
+        <li><span class="badge b-amber">結構</span>兩人內部事務合計 450.1h，佔總工時 46.8%。接近一半的時間沒有直接投入市場拓展，值得逐項檢視可否精簡或委派。</li>
+        <li><span class="badge b-red">風險</span>未成案沉沒工時合計 318.3h（NT$190,980），其中 Janyang 佔 61%。國漫館一案獨佔 104.8h，風險高度集中，超過 Janyang 全季成案合約總額。</li>
+        <li><span class="badge b-green">優勢</span>Liangheng 的大案命中率強：電業文物＋華航罷工展兩案合計 NT$3.02M，佔成案總額 64%，顯示政府/公務機關標案是核心競爭力。</li>
+      </ul>
+    </div>
+
+    <div class="section-divider">Liangheng 建議</div>
+    <div class="card">
+      <ul class="insights">
+        <li><span class="badge b-amber">效率</span>3月內部工時暴增至 117h（佔當月 57%），建議檢視是否有大量行政任務可委派或精簡，避免擠壓業務開發節奏。1月到3月的月度落差高達 2.8 倍，工時穩定性需要改善。</li>
+        <li><span class="badge b-blue">深耕</span>政府機關／公務標案成功率高，建議建立標案資料庫與提案範本，縮短每案準備工時。目前成案平均提案工時 4.5h，有機會壓縮到 2–3h。</li>
+        <li><span class="badge b-green">機會</span>BD 策略規劃投入充足（89.9h），可考慮將策略產出轉化為可複用的提案素材，降低每次提案的邊際成本，進一步提升每小時合約產出。</li>
+      </ul>
+    </div>
+
+    <div class="section-divider">Janyang 建議</div>
+    <div class="card">
+      <ul class="insights">
+        <li><span class="badge b-red">警示</span>國漫館《漫想誌》104.8h 未成案是本季最大風險點。建議未來所有提案在投入超過 20h 前設立「Go / No-go」檢查點，由主管評估是否繼續，避免工時無限累積。</li>
+        <li><span class="badge b-red">警示</span>R&D 故事旅行社 98.7h 執行工時，若無明確商業化路徑或對外收入，建議設定季度工時上限（建議 ≤ 40h/季）並追蹤 ROI。</li>
+        <li><span class="badge b-amber">結構</span>補助案研究（93.7h）＋R&D 執行（98.7h）合計 192.4h，佔個人總工時 35%。若此比重屬於策略性投資，應明確列入年度目標，否則建議大幅降低。</li>
+        <li><span class="badge b-blue">成長</span>已成案的熱帶植物與拍臺北均為小型案（合計 NT$100K），建議往合約額 NT$20 萬以上的案件集中提案，提升每小時合約產出，目標至少達到 NT$1,000/h。</li>
+      </ul>
+    </div>
+
+    <div class="section-divider">團隊層面建議</div>
+    <div class="card">
+      <ul class="insights">
+        <li><span class="badge b-blue">分工</span>建議明確劃分主戰場：Liangheng 主攻政府標案、勞務類大案；Janyang 主攻媒體、podcast、補助案。減少兩人同時接觸相同類型客戶的資源重疊，各自深耕。</li>
+        <li><span class="badge b-amber">制度</span>建議建立「提案工時預算制」：每案啟動前設定工時上限（例如以合約估算金額的 1% 換算工時），超過上限時須經主管審核，方可繼續投入。</li>
+        <li><span class="badge b-green">追蹤</span>目前有大量 99-99 案件持續記錄工時，建議每月統一盤點，確認哪些可回收、哪些應正式結案，避免工時繼續流入死案，每月沉沒成本預計可節省 NT$20,000 以上。</li>
+        <li><span class="badge b-green">目標</span>以 Q1 推算，每月人力成本約 NT$115,000。建議設定每季成案合約目標（人力成本的 8–10 倍，約 NT$2.76M–3.45M）作為業務健康度的量化指標。</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<footer>Story Studio · 業務工時分析報告 2026 Q1 · 產製於 2026/04</footer>
+
+<script>
+function sw(id, btn) {
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('p' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+const dk = window.matchMedia('(prefers-color-scheme: dark)').matches;
+const tc = dk ? '#9CA3AF' : '#5F5E5A';
+const gc = dk ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)';
+const bs = {
+  x: { ticks: { color: tc, font: { size: 11, family: 'DM Mono' } }, grid: { color: gc } },
+  y: { ticks: { color: tc, font: { size: 11, family: 'DM Mono' } }, grid: { color: gc } }
+};
+
+// c1 — Structure doughnut
+new Chart('c1', { type: 'doughnut', data: {
+  labels: ['業務內部事務', '成案提案+執行', 'R&D/補助案', '未成案提案'],
+  datasets: [{ data: [450.1, 124.2, 121.5, 266], backgroundColor: ['#2E6DA4','#1D9E75','#EF9F27','#E24B4A'], borderWidth: 0 }]
+}, options: { responsive: true, maintainAspectRatio: false, cutout: '62%',
+  plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw}h (${Math.round(ctx.raw/961.7*100)}%)` } } }
+}});
+
+// c2 — Monthly line
+new Chart('c2', { type: 'line', data: {
+  labels: ['1月', '2月', '3月'],
+  datasets: [
+    { label: 'Liangheng', data: [137.9, 73.4, 204.7], borderColor: '#7F77DD', backgroundColor: 'rgba(127,119,221,0.1)', tension: 0.35, fill: true, pointRadius: 5, pointBackgroundColor: '#7F77DD' },
+    { label: 'Janyang',   data: [158.8, 110.7, 276.2], borderColor: '#1D9E75', backgroundColor: 'rgba(29,158,117,0.1)', tension: 0.35, fill: true, pointRadius: 5, pointBackgroundColor: '#1D9E75' }
+  ]
+}, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { ...bs, y: { ...bs.y, beginAtZero: true } } }});
+
+// c3 — Activity horizontal bar
+new Chart('c3', { type: 'bar', data: {
+  labels: ['業務策略規劃', '補助案研究/R&D', '未成案提案', '陌生開發/BNI', '老客戶經營', '成案提案工時', '行政庶務', '成案執行工時'],
+  datasets: [{ data: [136.8, 215.2, 266, 89.1, 47.2, 47.3, 44.8, 77],
+    backgroundColor: ['#2E6DA4','#EF9F27','#E24B4A','#85B7EB','#7F77DD','#1D9E75','#D3D1C7','#639922'], borderRadius: 4 }]
+}, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.raw}h` } } },
+  scales: { x: { ...bs.x }, y: { ticks: { color: tc, font: { size: 11 } }, grid: { color: gc } } }
+}});
+
+// c4 — LH doughnut
+new Chart('c4', { type: 'doughnut', data: {
+  labels: ['D-業務部', '公司事務', '成案提案', '成案執行', '未成案提案', 'R&D協力'],
+  datasets: [{ data: [205.9, 15.7, 40.9, 29.0, 124.5, 22.8], backgroundColor: ['#2E6DA4','#85B7EB','#1D9E75','#639922','#E24B4A','#EF9F27'], borderWidth: 0 }]
+}, options: { responsive: true, maintainAspectRatio: false, cutout: '58%',
+  plugins: { legend: { position: 'bottom', labels: { color: tc, font: { size: 11 }, boxWidth: 11, padding: 8 } },
+  tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw}h` } } }
+}});
+
+// c5 — LH monthly stacked
+new Chart('c5', { type: 'bar', data: {
+  labels: ['1月', '2月', '3月'],
+  datasets: [
+    { label: '內部事務', data: [58.1, 46.5, 117.1], backgroundColor: '#B5D4F4', stack: 's', borderRadius: 3 },
+    { label: '專案工時', data: [79.8, 26.9, 87.7],  backgroundColor: '#7F77DD', stack: 's', borderRadius: 3 }
+  ]
+}, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: tc, font: { size: 11 }, boxWidth: 11 } } },
+  scales: { x: { stacked: true, ...bs.x }, y: { stacked: true, ...bs.y } }
+}});
+
+// c6 — JY doughnut
+new Chart('c6', { type: 'doughnut', data: {
+  labels: ['D-業務部', '個人事務', '公司事務', 'R&D執行', '成案工時', '未成案提案'],
+  datasets: [{ data: [160.0, 46.6, 22.0, 98.7, 24.5, 193.9], backgroundColor: ['#2E6DA4','#85B7EB','#B5D4F4','#EF9F27','#1D9E75','#E24B4A'], borderWidth: 0 }]
+}, options: { responsive: true, maintainAspectRatio: false, cutout: '58%',
+  plugins: { legend: { position: 'bottom', labels: { color: tc, font: { size: 11 }, boxWidth: 11, padding: 8 } },
+  tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw}h` } } }
+}});
+
+// c7 — JY monthly stacked
+new Chart('c7', { type: 'bar', data: {
+  labels: ['1月', '2月', '3月'],
+  datasets: [
+    { label: '內部事務', data: [70.9, 50.4, 107.3], backgroundColor: '#B5D4F4', stack: 's', borderRadius: 3 },
+    { label: '專案工時', data: [87.9, 60.3, 168.9],  backgroundColor: '#1D9E75', stack: 's', borderRadius: 3 }
+  ]
+}, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: tc, font: { size: 11 }, boxWidth: 11 } } },
+  scales: { x: { stacked: true, ...bs.x }, y: { stacked: true, ...bs.y } }
+}});
+
+// c8 — Radar
+new Chart('c8', { type: 'radar', data: {
+  labels: ['成案合約額', '成案件數', '提案效率', '內部精簡度', '大案命中率', '工時利用率'],
+  datasets: [
+    { label: 'Liangheng', data: [95, 70, 65, 47, 90, 58], borderColor: '#7F77DD', backgroundColor: 'rgba(127,119,221,0.15)', pointBackgroundColor: '#7F77DD', pointRadius: 4 },
+    { label: 'Janyang',   data: [10, 20, 40, 58, 20, 35], borderColor: '#1D9E75', backgroundColor: 'rgba(29,158,117,0.15)', pointBackgroundColor: '#1D9E75', pointRadius: 4 }
+  ]
+}, options: { responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { labels: { color: tc, font: { size: 12 }, boxWidth: 12 } } },
+  scales: { r: { min: 0, max: 100, ticks: { display: false }, pointLabels: { color: tc, font: { size: 12 } }, grid: { color: gc }, angleLines: { color: gc } } }
+}});
+
+// c9 — Structure grouped bar
+new Chart('c9', { type: 'bar', data: {
+  labels: ['業務內部', '成案提案', '成案執行', '未成案提案', 'R&D/補助'],
+  datasets: [
+    { label: 'Liangheng', data: [221.6, 40.9, 29.0, 124.5, 22.8], backgroundColor: 'rgba(127,119,221,0.85)', borderRadius: 3 },
+    { label: 'Janyang',   data: [228.5,  6.4, 18.1, 193.8, 98.7], backgroundColor: 'rgba(29,158,117,0.85)',  borderRadius: 3 }
+  ]
+}, options: { responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { labels: { color: tc, font: { size: 11 }, boxWidth: 11 } } },
+  scales: { ...bs }
+}});
+</script>
+</body>
+</html>
